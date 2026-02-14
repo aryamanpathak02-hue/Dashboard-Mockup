@@ -22,11 +22,11 @@ body{
 
 /* ── Stencil (unchanged) ── */
 .stencil-overlay{position:fixed;inset:0;pointer-events:none;z-index:1;mix-blend-mode:multiply}
-.stencil-overlay::before,.stencil-overlay::after{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(139,92,246,.06) 0 1px,transparent 1px 80px),repeating-linear-gradient(90deg,rgba(139,92,246,.05) 0 1px,transparent 1px 90px);background-repeat:repeat;opacity:0}
+.stencil-overlay::before,.stencil-overlay::after{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(139,92,246,.18) 0 1px,transparent 1px 80px),repeating-linear-gradient(90deg,rgba(139,92,246,.15) 0 1px,transparent 1px 90px);background-repeat:repeat;opacity:0}
 .stencil-overlay::before{animation:stencilX 14s ease-in-out infinite;-webkit-mask-image:linear-gradient(90deg,#000 70%,transparent);mask-image:linear-gradient(90deg,#000 70%,transparent);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:0% 100%;mask-size:0% 100%}
 .stencil-overlay::after{animation:stencilY 14s ease-in-out infinite;animation-delay:7s;-webkit-mask-image:linear-gradient(180deg,#000 70%,transparent);mask-image:linear-gradient(180deg,#000 70%,transparent);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:100% 0%;mask-size:100% 0%}
-@keyframes stencilX{0%{opacity:0;-webkit-mask-size:0% 100%;mask-size:0% 100%}15%{opacity:.55}45%{opacity:.55;-webkit-mask-size:100% 100%;mask-size:100% 100%}60%{opacity:.12}75%,100%{opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}}
-@keyframes stencilY{0%{opacity:0;-webkit-mask-size:100% 0%;mask-size:100% 0%}15%{opacity:.55}45%{opacity:.55;-webkit-mask-size:100% 100%;mask-size:100% 100%}60%{opacity:.12}75%,100%{opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}}
+@keyframes stencilX{0%{opacity:0;-webkit-mask-size:0% 100%;mask-size:0% 100%}15%{opacity:.85}45%{opacity:.85;-webkit-mask-size:100% 100%;mask-size:100% 100%}60%{opacity:.25}75%,100%{opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}}
+@keyframes stencilY{0%{opacity:0;-webkit-mask-size:100% 0%;mask-size:100% 0%}15%{opacity:.85}45%{opacity:.85;-webkit-mask-size:100% 100%;mask-size:100% 100%}60%{opacity:.25}75%,100%{opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}}
 
 /* ── Header ── */
 .header{position:sticky;top:0;z-index:100;background:rgba(240,235,227,.55);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid rgba(0,0,0,.06);padding:0 40px;transition:background .3s}
