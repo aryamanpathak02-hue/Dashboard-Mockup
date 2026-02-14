@@ -29,7 +29,7 @@ body{
 @keyframes stencilY{0%{opacity:0;-webkit-mask-size:100% 0%;mask-size:100% 0%}15%{opacity:.55}45%{opacity:.55;-webkit-mask-size:100% 100%;mask-size:100% 100%}60%{opacity:.12}75%,100%{opacity:0;-webkit-mask-size:100% 100%;mask-size:100% 100%}}
 
 /* ── Header ── */
-.header{position:sticky;top:0;z-index:100;background:rgba(240,235,227,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 40px}
+.header{position:sticky;top:0;z-index:100;background:rgba(240,235,227,.55);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid rgba(0,0,0,.06);padding:0 40px;transition:background .3s}
 .header-content{display:flex;justify-content:space-between;align-items:center;max-width:1400px;margin:0 auto;height:60px}
 .logo{font-size:24px;font-weight:800;color:var(--black);letter-spacing:-.5px}
 .nav{display:flex;gap:4px;font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
