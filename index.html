@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Munshi. — Audio Intelligence for Teams</title>
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body>
   <div class="stencil-overlay" aria-hidden="true"></div>
@@ -16,14 +16,9 @@
       <nav class="nav">
         <a href="#" class="nav-link active" data-section="home">HOME</a>
         <a href="#" class="nav-link" data-section="collections">COLLECTIONS</a>
-        <a href="#" class="nav-link" data-section="premium">PREMIUM</a>
-        <a href="#" class="nav-link" data-section="log">LOG</a>
+        <a href="#" class="nav-link" data-section="whispers">WHISPERS</a>
       </nav>
       <div class="header-actions">
-        <span id="userBadge" class="user-badge" style="display:none;"></span>
-        <span id="premiumBadge" class="premium-badge" style="display:none;">PRO</span>
-        <button class="btn-signin" id="signInBtn">SIGN IN</button>
-        <button class="btn-signout" id="signOutBtn" style="display:none;">SIGN OUT</button>
         <button class="add-btn" id="createArchiveBtn" title="Create New Archive">+</button>
       </div>
     </div>
@@ -34,7 +29,11 @@
 
     <!-- Hero -->
     <div class="hero">
-      <h2 class="headline">Audio intelligence<br>for <span class="underline">teams</span></h2>
+      <!-- Wave-to-text morph: canvas waveform dissolves into headline -->
+      <div class="hero-morph">
+        <canvas id="heroWaveCanvas" class="hero-wave-canvas"></canvas>
+        <h2 class="headline" id="heroHeadline">Audio intelligence<br>for <span class="underline">teams</span></h2>
+      </div>
       <p class="tagline">Because your audio is actually intelligent</p>
       <p class="description">Turn meetings, podcasts, and calls into searchable knowledge. One place to capture, transcribe, and recall what was said.</p>
 
@@ -71,32 +70,131 @@
 
   <!-- ══════════ COLLECTIONS ══════════ -->
   <section class="page-section" id="collectionsSection" style="display:none;">
-    <div class="collections-header">
-      <h2 class="collections-title">Collections</h2>
-      <p class="collections-sub">Search intelligently through millions of hours of audio</p>
+
+    <!-- Grid landing -->
+    <div id="collectionsLanding">
+      <div class="collections-header">
+        <h2 class="collections-title">Collections</h2>
+        <p class="collections-sub">Search intelligently through millions of hours of audio</p>
+      </div>
+      <div class="collections-grid" id="collectionsGrid"></div>
     </div>
-    <div class="collections-grid" id="collectionsGrid"></div>
+
+    <!-- Collection detail (shown after zoom) -->
+    <div class="coll-detail" id="collectionDetail" style="display:none;">
+      <button class="coll-back" id="collBack">&larr; Back to Collections</button>
+      <div class="coll-detail-header" id="collDetailHeader">
+        <div class="coll-detail-info">
+          <span class="archive-tag" id="collDetailTag"></span>
+          <h2 class="coll-detail-title" id="collDetailTitle"></h2>
+          <p class="coll-detail-meta" id="collDetailMeta"></p>
+        </div>
+      </div>
+      <div class="coll-search-wrap">
+        <div class="coll-search">
+          <span class="coll-search-icon">&#128269;</span>
+          <input type="text" id="collSearchInput" class="coll-search-input" placeholder="Search through this collection..." autocomplete="off" />
+        </div>
+      </div>
+      <div class="coll-episode-count" id="collEpisodeCount"></div>
+      <div class="coll-episodes" id="collEpisodes"></div>
+    </div>
   </section>
 
-  <!-- ══════════ PREMIUM ══════════ -->
-  <section class="page-section" id="premiumSection" style="display:none;">
-    <div class="premium-inner">
-      <h2 class="premium-headline">Premium features</h2>
-      <p class="premium-sub">For teams and enterprises. Unlock more with a plan.</p>
-      <div class="premium-grid" id="premiumGrid">
-        <div class="premium-card" data-feature="workspaces"><span class="premium-card-icon">&#128101;</span><h3>Team Workspaces</h3><p>Shared libraries, roles, and permissions.</p><span class="premium-lock">Sign in to view</span></div>
-        <div class="premium-card" data-feature="api"><span class="premium-card-icon">&#128296;</span><h3>API Access</h3><p>Integrate transcription and search into your apps.</p><span class="premium-lock">Sign in to view</span></div>
-        <div class="premium-card" data-feature="bulk"><span class="premium-card-icon">&#128190;</span><h3>Bulk Upload</h3><p>Process hundreds of files and folders at once.</p><span class="premium-lock">Sign in to view</span></div>
-        <div class="premium-card" data-feature="analytics"><span class="premium-card-icon">&#128202;</span><h3>Analytics &amp; Insights</h3><p>Usage dashboards and search analytics.</p><span class="premium-lock">Sign in to view</span></div>
-        <div class="premium-card" data-feature="sso"><span class="premium-card-icon">&#128274;</span><h3>SSO &amp; SCIM</h3><p>Single sign-on and automated user provisioning.</p><span class="premium-lock">Sign in to view</span></div>
-        <div class="premium-card" data-feature="support"><span class="premium-card-icon">&#128172;</span><h3>Priority Support</h3><p>Dedicated success manager and SLA.</p><span class="premium-lock">Sign in to view</span></div>
+  <!-- ══════════ WHISPERS ══════════ -->
+  <section class="page-section whispers-section" id="whispersSection" style="display:none;">
+    <canvas id="bubblesCanvas" class="bubbles-canvas"></canvas>
+
+    <!-- ── Landing: 3 immersive panels ── -->
+    <div class="whispers-landing" id="whispersLanding">
+      <div class="whispers-header">
+        <h2 class="whispers-title">Whispers</h2>
+        <p class="whispers-sub">You probably didn't know this:</p>
       </div>
-      <div class="premium-cta" id="premiumCta">
-        <p id="premiumCtaText">Sign in to see plans and upgrade.</p>
-        <button class="create-btn" id="premiumSignInBtn">Sign in</button>
+      <div class="whisper-bento" id="whisperBento">
+        <!-- Signal — large left -->
+        <div class="bento-pane bento-signal" data-cat="signal">
+          <div class="bento-glow"></div>
+          <div class="bento-accent"></div>
+          <canvas class="bento-viz" id="vizSignal"></canvas>
+          <div class="bento-inner">
+            <div class="bento-top">
+              <span class="bento-icon">&#9650;</span>
+              <span class="bento-count" id="bentoCountSignal" data-target="3">0</span>
+            </div>
+            <h3 class="bento-label">Signals</h3>
+            <p class="bento-desc">Wins, positive trends, and momentum</p>
+            <div class="bento-preview" id="bentoPreviewSignal"></div>
+            <span class="bento-cta">Explore &rarr;</span>
+          </div>
+        </div>
+        <!-- Alert — top right -->
+        <div class="bento-pane bento-alert" data-cat="alert">
+          <div class="bento-glow"></div>
+          <div class="bento-accent"></div>
+          <canvas class="bento-viz" id="vizAlert"></canvas>
+          <div class="bento-inner">
+            <div class="bento-top">
+              <span class="bento-icon">&#9888;</span>
+              <span class="bento-count" id="bentoCountAlert" data-target="3">0</span>
+            </div>
+            <h3 class="bento-label">Alerts</h3>
+            <p class="bento-desc">Risks, negative sentiment, red flags</p>
+            <div class="bento-preview" id="bentoPreviewAlert"></div>
+            <span class="bento-cta">Explore &rarr;</span>
+          </div>
+        </div>
+        <!-- Bridge — full bottom width -->
+        <div class="bento-pane bento-bridge" data-cat="bridge">
+          <div class="bento-glow"></div>
+          <div class="bento-accent"></div>
+          <canvas class="bento-viz" id="vizBridge"></canvas>
+          <div class="bento-inner">
+            <div class="bento-top">
+              <span class="bento-icon">&#8644;</span>
+              <span class="bento-count" id="bentoCountBridge" data-target="3">0</span>
+            </div>
+            <h3 class="bento-label">Bridge</h3>
+            <p class="bento-desc">Connecting the dots — linking signals to alerts</p>
+            <div class="bento-preview" id="bentoPreviewBridge"></div>
+            <span class="bento-cta">Explore &rarr;</span>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- ── Detail view (shown after zoom) ── -->
+    <div class="whispers-detail" id="whispersDetail" style="display:none;">
+      <button class="whisper-back" id="whisperBack">&larr; Back to Whispers</button>
+      <div class="whispers-detail-header" id="whispersDetailHeader">
+        <span class="whisper-detail-icon" id="whisperDetailIcon"></span>
+        <h2 class="whisper-detail-title" id="whisperDetailTitle"></h2>
+      </div>
+      <div class="whisper-grid" id="whisperGrid"></div>
+    </div>
   </section>
+
+  <!-- ── Whisper Expand Modal ── -->
+  <div class="modal" id="whisperModal" style="display:none;">
+    <div class="modal-content whisper-modal-content">
+      <div class="modal-header" id="whisperModalHeader">
+        <div class="whisper-modal-badge" id="whisperModalBadge">SIGNAL</div>
+        <h3 id="whisperModalTitle">Insight</h3>
+        <button class="modal-close" id="whisperModalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="whisper-modal-text" id="whisperModalText"></p>
+        <div class="whisper-modal-summary">
+          <h4>Summary</h4>
+          <p id="whisperModalSummary"></p>
+        </div>
+        <div class="whisper-modal-questions" id="whisperModalQuestions">
+          <h4>Ask about this insight</h4>
+          <div class="whisper-questions-list" id="whisperQuestionsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════════ MODALS ══════════ -->
   <div class="modal" id="archiveModal" style="display:none;">
@@ -110,19 +208,6 @@
     </div>
   </div>
 
-  <div class="modal" id="signInModal" style="display:none;">
-    <div class="modal-content create-modal">
-      <div class="modal-header"><h3>Sign in</h3><button class="modal-close" id="signInModalClose">&times;</button></div>
-      <div class="modal-body">
-        <form id="signInForm">
-          <div class="form-group"><label>Work email</label><input type="email" id="signInEmail" placeholder="you@company.com" required /></div>
-          <div class="form-group"><label>Password</label><input type="password" id="signInPassword" placeholder="••••••••" required /></div>
-          <div class="form-group form-group-check"><label class="checkbox-label"><input type="checkbox" id="signInPremium" /><span>Sign in as Premium (demo)</span></label></div>
-          <button type="submit" class="create-btn">Sign in</button>
-        </form>
-      </div>
-    </div>
-  </div>
 
   <div class="modal" id="createModal" style="display:none;">
     <div class="modal-content create-modal">
