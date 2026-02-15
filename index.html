@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Munshi. — Audio Intelligence for Teams</title>
-  <link rel="stylesheet" href="style.css?v=16" />
+  <link rel="stylesheet" href="style.css?v=17" />
 </head>
 <body>
+  <div class="cursor-glow" id="cursorGlow"></div>
   <div class="stencil-overlay" aria-hidden="true"></div>
 
   <!-- ── Header ── -->
@@ -19,16 +20,18 @@
         <a href="#" class="nav-link" data-section="whispers">WHISPERS</a>
       </nav>
       <div class="header-actions">
+        <button class="btn-signin" id="signInBtn">Sign In</button>
         <button class="add-btn" id="createArchiveBtn" title="Create New Archive">+</button>
       </div>
     </div>
   </header>
 
   <!-- ══════════ HOME / LANDING ══════════ -->
-  <section class="page-section" id="homeSection">
+  <section class="page-section section-active" id="homeSection">
 
     <!-- Hero -->
     <div class="hero">
+      <div class="aurora-bg" aria-hidden="true"></div>
       <!-- Wave-to-text morph: canvas waveform dissolves into headline -->
       <div class="hero-morph">
         <canvas id="heroWaveCanvas" class="hero-wave-canvas"></canvas>
@@ -51,6 +54,14 @@
       <button class="create-btn" id="createBtn">Create archive &rarr;</button>
     </div>
 
+    <!-- Stats dashboard -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="stat-accent"></div><span class="stat-number" id="statHours" data-target="0" data-suffix=" hrs">0</span><span class="stat-label">Hours Processed</span></div>
+      <div class="stat-card"><div class="stat-accent"></div><span class="stat-number" id="statCollections" data-target="0">0</span><span class="stat-label">Collections</span></div>
+      <div class="stat-card"><div class="stat-accent"></div><span class="stat-number" id="statEpisodes" data-target="0">0</span><span class="stat-label">Episodes Indexed</span></div>
+      <div class="stat-card"><div class="stat-accent"></div><span class="stat-number" id="statWhispers" data-target="0">0</span><span class="stat-label">Whispers Discovered</span></div>
+    </div>
+
     <!-- Recent archives (compact list) -->
     <div class="recent-section">
       <h3 class="section-title">Recent archives</h3>
@@ -70,6 +81,7 @@
 
   <!-- ══════════ COLLECTIONS ══════════ -->
   <section class="page-section" id="collectionsSection" style="display:none;">
+    <nav class="breadcrumb-bar" id="collBreadcrumb" style="display:none;"><a class="bc-link" id="collBcRoot">Collections</a><span class="bc-sep">/</span><span class="bc-current" id="collBcCurrent"></span></nav>
 
     <!-- Grid landing -->
     <div id="collectionsLanding">
@@ -103,6 +115,7 @@
 
   <!-- ══════════ WHISPERS ══════════ -->
   <section class="page-section whispers-section" id="whispersSection" style="display:none;">
+    <nav class="breadcrumb-bar" id="whisperBreadcrumb" style="display:none;"><a class="bc-link" id="whisperBcRoot">Whispers</a><span class="bc-sep">/</span><span class="bc-current" id="whisperBcCurrent"></span></nav>
     <canvas id="bubblesCanvas" class="bubbles-canvas"></canvas>
 
     <!-- ── Landing: 3 immersive panels ── -->
@@ -231,6 +244,19 @@
           <button type="submit" class="create-btn">Create archive</button>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMMAND PALETTE ══════════ -->
+  <div class="cmdk-overlay" id="cmdkOverlay" style="display:none;">
+    <div class="cmdk-dialog">
+      <div class="cmdk-input-wrap">
+        <span class="cmdk-input-icon">&#128269;</span>
+        <input type="text" id="cmdkInput" class="cmdk-input" placeholder="Search pages, collections, episodes, whispers…" autocomplete="off" />
+        <kbd class="cmdk-esc">ESC</kbd>
+      </div>
+      <div class="cmdk-results" id="cmdkResults"></div>
+      <div class="cmdk-footer"><span>Navigate with <kbd>&uarr;</kbd> <kbd>&darr;</kbd></span><span>Select with <kbd>Enter</kbd></span></div>
     </div>
   </div>
 

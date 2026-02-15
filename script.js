@@ -178,6 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initBubblesCanvas();
   populateWhispers();
   initBentoViz();
+  initCursorGlow();
+  initStats();
+  setupBreadcrumbs();
+  setupCmdPalette();
 });
 
 // ══════════════════════════════════════════
@@ -314,24 +318,63 @@ function initHeroWave() {
   animId = requestAnimationFrame(draw);
 }
 
-// ── Navigation ──
+// ── Navigation (smooth crossfade transitions) ──
+let _currentSection = 'home';
+let _transitioning = false;
+
 function showSection(name) {
-  document.getElementById('homeSection').style.display = name === 'home' ? '' : 'none';
-  document.getElementById('collectionsSection').style.display = name === 'collections' ? '' : 'none';
-  document.getElementById('whispersSection').style.display = name === 'whispers' ? '' : 'none';
-  if (name === 'collections') {
-    // Always reset to grid view
-    document.getElementById('collectionsLanding').style.display = '';
-    document.getElementById('collectionDetail').style.display = 'none';
+  if (name === _currentSection || _transitioning) return;
+  _transitioning = true;
+
+  const sections = { home:'homeSection', collections:'collectionsSection', whispers:'whispersSection' };
+  const oldEl = document.getElementById(sections[_currentSection]);
+  const newEl = document.getElementById(sections[name]);
+
+  // Hide breadcrumbs for the old section
+  hideBreadcrumb(_currentSection);
+
+  // Phase 1: animate out the old section
+  if (oldEl) {
+    oldEl.classList.remove('section-active');
+    oldEl.classList.add('section-leaving');
   }
-  if (name === 'whispers') {
-    // Always reset to landing view
-    document.getElementById('whispersLanding').style.display = '';
-    document.getElementById('whispersDetail').style.display = 'none';
-    resizeBubblesCanvas();
-    // Trigger count-up animation
-    animateCountUps();
-  }
+
+  setTimeout(() => {
+    // Finish old section
+    if (oldEl) {
+      oldEl.style.display = 'none';
+      oldEl.classList.remove('section-leaving');
+    }
+
+    // Prepare new section
+    if (name === 'collections') {
+      document.getElementById('collectionsLanding').style.display = '';
+      document.getElementById('collectionDetail').style.display = 'none';
+      hideBreadcrumb('collections');
+    }
+    if (name === 'whispers') {
+      document.getElementById('whispersLanding').style.display = '';
+      document.getElementById('whispersDetail').style.display = 'none';
+      hideBreadcrumb('whispers');
+    }
+
+    // Show new section
+    newEl.style.display = '';
+    // Force reflow so the initial transform state is applied
+    void newEl.offsetHeight;
+    newEl.classList.add('section-active');
+
+    if (name === 'whispers') {
+      resizeBubblesCanvas();
+      animateCountUps();
+    }
+    if (name === 'home') {
+      animateStats();
+    }
+
+    _currentSection = name;
+    _transitioning = false;
+  }, 260);
 }
 
 // ── Event listeners ──
@@ -494,6 +537,9 @@ function zoomIntoCat(cat, paneEl) {
     titleEl.style.color = meta.color;
     renderWhisperCards(cat);
 
+    // Show breadcrumb
+    showBreadcrumb('whispers', meta.label);
+
     // Fade out overlay to reveal content
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 450);
@@ -551,6 +597,7 @@ function setupWhisperBack() {
         landing.style.transition = 'opacity .3s ease';
         landing.style.opacity = '1';
         overlay.style.opacity = '0';
+        hideBreadcrumb('whispers');
         setTimeout(() => {
           overlay.remove();
           landing.style.transition = '';
@@ -570,7 +617,9 @@ function openWhisperModal(w) {
   badge.textContent = CAT_META[w.cat].label;
   document.getElementById('whisperModalTitle').textContent = w.title;
   document.getElementById('whisperModalText').textContent = w.preview;
-  document.getElementById('whisperModalSummary').textContent = w.summary;
+  // Stream the summary text word-by-word
+  const summaryEl = document.getElementById('whisperModalSummary');
+  streamSummaryText(summaryEl, w.summary, w.id);
   const header = document.getElementById('whisperModalHeader');
   header.style.borderBottomColor = w.cat === 'signal' ? 'rgba(22,163,74,.2)' : w.cat === 'alert' ? 'rgba(220,38,38,.2)' : 'rgba(139,92,246,.2)';
 
@@ -727,6 +776,9 @@ function openCollection(archive, cardEl) {
     // Render episodes
     renderEpisodes(archive.id);
 
+    // Show breadcrumb
+    showBreadcrumb('collections', archive.title);
+
     // Fade out overlay
     overlay.style.opacity = '0';
     setTimeout(() => overlay.remove(), 450);
@@ -774,6 +826,7 @@ function setupCollectionBack() {
         landing.style.transition = 'opacity .3s ease';
         landing.style.opacity = '1';
         overlay.style.opacity = '0';
+        hideBreadcrumb('collections');
         setTimeout(() => {
           overlay.remove();
           landing.style.transition = '';
@@ -824,19 +877,17 @@ function renderEpisodes(archiveId, filter) {
         </div>
         <div class="coll-ep-chevron">&#9662;</div>
       </div>
-      <div class="coll-ep-expanded">
-        <div class="coll-ep-section">
-          <h4>Summary</h4>
-          <div class="coll-ep-summary">${ep.summary}</div>
-        </div>
-        <div class="coll-ep-section">
-          <h4>Transcript</h4>
-          <div class="coll-ep-transcript">${ep.transcript}</div>
-        </div>
-      </div>`;
-    // Toggle expand
+      <div class="coll-ep-expanded"></div>`;
+    // Toggle expand with skeleton loading
+    let loaded = false;
     div.querySelector('.coll-ep-header').addEventListener('click', () => {
+      const isExpanding = !div.classList.contains('expanded');
       div.classList.toggle('expanded');
+      if (isExpanding && !loaded) {
+        loaded = true;
+        const expandedDiv = div.querySelector('.coll-ep-expanded');
+        showSkeletonThenContent(expandedDiv, ep);
+      }
     });
     container.appendChild(div);
   });
@@ -1218,6 +1269,429 @@ function drawBridgeLines() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+
+// ══════════════════════════════════════════
+// ── Cursor Spotlight (global) ────────────
+// ══════════════════════════════════════════
+function initCursorGlow() {
+  const glow = document.getElementById('cursorGlow');
+  if (!glow) return;
+  // Hide on touch devices
+  if ('ontouchstart' in window) return;
+
+  let mx = -500, my = -500;
+  let cx = -500, cy = -500;
+  let visible = false;
+  let rafId = null;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX;
+    my = e.clientY;
+    if (!visible) { visible = true; glow.classList.add('visible'); }
+    if (!rafId) rafId = requestAnimationFrame(glowLoop);
+  });
+
+  document.addEventListener('mouseleave', () => {
+    visible = false;
+    glow.classList.remove('visible');
+  });
+
+  function glowLoop() {
+    cx += (mx - cx) * 0.15;
+    cy += (my - cy) * 0.15;
+    glow.style.left = cx + 'px';
+    glow.style.top = cy + 'px';
+    if (Math.abs(cx - mx) > 0.5 || Math.abs(cy - my) > 0.5) {
+      rafId = requestAnimationFrame(glowLoop);
+    } else {
+      glow.style.left = mx + 'px';
+      glow.style.top = my + 'px';
+      rafId = null;
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+// ── Stats Dashboard (Home) ───────────────
+// ══════════════════════════════════════════
+function initStats() {
+  // Compute values from data
+  const totalMinutes = archives.reduce((s, a) => s + a.duration, 0);
+  const totalHours = (totalMinutes / 60).toFixed(1);
+  const totalCollections = archives.length;
+  let totalEpisodes = 0;
+  Object.values(MOCK_EPISODES).forEach(eps => totalEpisodes += eps.length);
+  const totalWhispers = MOCK_WHISPERS.length;
+
+  document.getElementById('statHours').dataset.target = totalHours;
+  document.getElementById('statHours').dataset.suffix = ' hrs';
+  document.getElementById('statCollections').dataset.target = totalCollections;
+  document.getElementById('statEpisodes').dataset.target = totalEpisodes;
+  document.getElementById('statWhispers').dataset.target = totalWhispers;
+
+  animateStats();
+}
+
+function animateStats() {
+  document.querySelectorAll('.stat-number').forEach(el => {
+    const target = parseFloat(el.dataset.target) || 0;
+    const suffix = el.dataset.suffix || '';
+    const isFloat = String(target).includes('.');
+    if (target === 0) return;
+    el.textContent = '0' + suffix;
+    const duration = 1000;
+    const start = performance.now();
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = eased * target;
+      el.textContent = (isFloat ? val.toFixed(1) : Math.round(val)) + suffix;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+// ══════════════════════════════════════════
+// ── Breadcrumb Trail Navigation ──────────
+// ══════════════════════════════════════════
+function setupBreadcrumbs() {
+  // Collections breadcrumb root click → go back
+  const collRoot = document.getElementById('collBcRoot');
+  if (collRoot) {
+    collRoot.addEventListener('click', () => {
+      document.getElementById('collBack').click();
+    });
+  }
+  // Whispers breadcrumb root click → go back
+  const whisperRoot = document.getElementById('whisperBcRoot');
+  if (whisperRoot) {
+    whisperRoot.addEventListener('click', () => {
+      document.getElementById('whisperBack').click();
+    });
+  }
+}
+
+function showBreadcrumb(section, label) {
+  if (section === 'collections') {
+    const bc = document.getElementById('collBreadcrumb');
+    document.getElementById('collBcCurrent').textContent = label;
+    bc.style.display = 'flex';
+    bc.style.animation = 'none';
+    void bc.offsetHeight;
+    bc.style.animation = '';
+  } else if (section === 'whispers') {
+    const bc = document.getElementById('whisperBreadcrumb');
+    document.getElementById('whisperBcCurrent').textContent = label;
+    bc.style.display = 'flex';
+    bc.style.animation = 'none';
+    void bc.offsetHeight;
+    bc.style.animation = '';
+  }
+}
+
+function hideBreadcrumb(section) {
+  if (section === 'collections') {
+    const bc = document.getElementById('collBreadcrumb');
+    if (bc) bc.style.display = 'none';
+  } else if (section === 'whispers') {
+    const bc = document.getElementById('whisperBreadcrumb');
+    if (bc) bc.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════
+// ── Skeleton Loaders (episode expand) ────
+// ══════════════════════════════════════════
+function showSkeletonThenContent(expandedDiv, ep) {
+  // Inject skeleton lines
+  expandedDiv.innerHTML = `
+    <div style="padding:12px 0">
+      <div class="skeleton-line" style="width:100%"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line"></div>
+    </div>`;
+
+  setTimeout(() => {
+    expandedDiv.innerHTML = `
+      <div class="coll-ep-section">
+        <h4>Summary</h4>
+        <div class="coll-ep-summary">${ep.summary}</div>
+      </div>
+      <div class="coll-ep-section">
+        <h4>Transcript</h4>
+        <div class="coll-ep-transcript">${ep.transcript}</div>
+      </div>`;
+  }, 400);
+}
+
+// ══════════════════════════════════════════
+// ── Streaming Text (whisper modal) ───────
+// ══════════════════════════════════════════
+const _streamedInsights = new Set();
+
+function streamSummaryText(summaryEl, text, insightId) {
+  if (_streamedInsights.has(insightId)) {
+    summaryEl.textContent = text;
+    return;
+  }
+  _streamedInsights.add(insightId);
+
+  const words = text.split(' ');
+  summaryEl.textContent = '';
+  summaryEl.classList.add('streaming-cursor');
+  let idx = 0;
+
+  const iv = setInterval(() => {
+    if (idx < words.length) {
+      summaryEl.textContent += (idx > 0 ? ' ' : '') + words[idx];
+      idx++;
+    } else {
+      clearInterval(iv);
+      summaryEl.classList.remove('streaming-cursor');
+    }
+  }, 20);
+}
+
+// ══════════════════════════════════════════
+// ── Command Palette (Cmd+K / Ctrl+K) ────
+// ══════════════════════════════════════════
+let _cmdkOpen = false;
+let _cmdkActiveIdx = 0;
+let _cmdkResults = [];
+
+function setupCmdPalette() {
+  const overlay = document.getElementById('cmdkOverlay');
+  const input = document.getElementById('cmdkInput');
+  const resultsEl = document.getElementById('cmdkResults');
+  const pill = document.getElementById('cmdkPill');
+
+  if (!overlay || !input) return;
+
+  // Toggle with Ctrl+K / Cmd+K
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      toggleCmdPalette();
+    }
+    if (e.key === 'Escape' && _cmdkOpen) {
+      closeCmdPalette();
+    }
+  });
+
+  // Pill click
+  if (pill) pill.addEventListener('click', () => toggleCmdPalette());
+
+  // Close on overlay click
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeCmdPalette();
+  });
+
+  // Input handling
+  let debounce = null;
+  input.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      const q = input.value.trim();
+      _cmdkResults = buildSearchIndex(q);
+      _cmdkActiveIdx = 0;
+      renderCmdkResults();
+    }, 100);
+  });
+
+  // Keyboard navigation
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _cmdkActiveIdx = Math.min(_cmdkActiveIdx + 1, _cmdkResults.length - 1);
+      renderCmdkResults();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _cmdkActiveIdx = Math.max(_cmdkActiveIdx - 1, 0);
+      renderCmdkResults();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_cmdkResults[_cmdkActiveIdx]) {
+        executeCmdkAction(_cmdkResults[_cmdkActiveIdx]);
+      }
+    }
+  });
+}
+
+function toggleCmdPalette() {
+  _cmdkOpen ? closeCmdPalette() : openCmdPalette();
+}
+
+function openCmdPalette() {
+  const overlay = document.getElementById('cmdkOverlay');
+  const input = document.getElementById('cmdkInput');
+  overlay.style.display = 'flex';
+  input.value = '';
+  _cmdkResults = buildSearchIndex('');
+  _cmdkActiveIdx = 0;
+  renderCmdkResults();
+  setTimeout(() => input.focus(), 50);
+  _cmdkOpen = true;
+}
+
+function closeCmdPalette() {
+  document.getElementById('cmdkOverlay').style.display = 'none';
+  _cmdkOpen = false;
+}
+
+function buildSearchIndex(query) {
+  const q = query.toLowerCase();
+  const results = [];
+
+  // Pages
+  const pages = [
+    { type:'page', icon:'&#127968;', title:'Home', sub:'Landing page', action:() => navTo('home') },
+    { type:'page', icon:'&#128218;', title:'Collections', sub:'Browse all collections', action:() => navTo('collections') },
+    { type:'page', icon:'&#128172;', title:'Whispers', sub:'AI-discovered insights', action:() => navTo('whispers') },
+  ];
+  pages.forEach(p => {
+    if (!q || p.title.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q)) results.push(p);
+  });
+
+  // Actions
+  const actions = [
+    { type:'action', icon:'&#10010;', title:'Create archive', sub:'Start a new archive', action:() => { closeCmdPalette(); document.getElementById('createModal').style.display = 'flex'; } },
+    { type:'action', icon:'&#128228;', title:'Upload audio', sub:'Upload and process audio', action:() => { closeCmdPalette(); navTo('home'); setTimeout(() => document.getElementById('audioFileInput').click(), 300); } },
+  ];
+  actions.forEach(a => {
+    if (!q || a.title.toLowerCase().includes(q) || a.sub.toLowerCase().includes(q)) results.push(a);
+  });
+
+  // Collections (archives)
+  archives.forEach(a => {
+    if (!q || a.title.toLowerCase().includes(q) || a.category.toLowerCase().includes(q) || a.host.toLowerCase().includes(q)) {
+      results.push({
+        type:'collection', icon:'&#128218;', title:a.title,
+        sub:`${a.category} · ${a.host}`,
+        action:() => {
+          closeCmdPalette();
+          navTo('collections');
+          setTimeout(() => {
+            const cards = document.querySelectorAll('.collection-card');
+            const idx = archives.findIndex(x => x.id === a.id);
+            if (idx >= 0 && cards[idx]) openCollection(a, cards[idx]);
+          }, 350);
+        }
+      });
+    }
+  });
+
+  // Episodes
+  archives.forEach(a => {
+    const eps = MOCK_EPISODES[a.id] || [];
+    eps.forEach(ep => {
+      if (!q || ep.title.toLowerCase().includes(q) || (ep.guest && ep.guest.toLowerCase().includes(q))) {
+        results.push({
+          type:'episode', icon:'&#127911;', title:ep.title,
+          sub:`Episode in ${a.title}`,
+          action:() => {
+            closeCmdPalette();
+            navTo('collections');
+            setTimeout(() => {
+              const cards = document.querySelectorAll('.collection-card');
+              const idx = archives.findIndex(x => x.id === a.id);
+              if (idx >= 0 && cards[idx]) openCollection(a, cards[idx]);
+            }, 350);
+          }
+        });
+      }
+    });
+  });
+
+  // Whispers
+  MOCK_WHISPERS.forEach(w => {
+    if (!q || w.title.toLowerCase().includes(q) || w.preview.toLowerCase().includes(q)) {
+      results.push({
+        type:'whisper', icon: w.cat === 'signal' ? '&#9650;' : w.cat === 'alert' ? '&#9888;' : '&#8644;',
+        title:w.title,
+        sub:`${CAT_META[w.cat].label} · ${w.source}`,
+        action:() => {
+          closeCmdPalette();
+          navTo('whispers');
+          setTimeout(() => {
+            const pane = document.querySelector(`.bento-pane[data-cat="${w.cat}"]`);
+            if (pane) zoomIntoCat(w.cat, pane);
+          }, 350);
+        }
+      });
+    }
+  });
+
+  // Limit results
+  return results.slice(0, 20);
+}
+
+function renderCmdkResults() {
+  const container = document.getElementById('cmdkResults');
+  if (_cmdkResults.length === 0) {
+    container.innerHTML = '<div class="cmdk-empty">No results found</div>';
+    return;
+  }
+
+  // Group by type
+  const groups = {};
+  const groupOrder = ['page','action','collection','episode','whisper'];
+  const groupLabels = { page:'Pages', action:'Actions', collection:'Collections', episode:'Episodes', whisper:'Whispers' };
+
+  _cmdkResults.forEach((r, i) => {
+    if (!groups[r.type]) groups[r.type] = [];
+    groups[r.type].push({ ...r, _idx: i });
+  });
+
+  let html = '';
+  groupOrder.forEach(type => {
+    if (!groups[type]) return;
+    html += `<div class="cmdk-group-label">${groupLabels[type]}</div>`;
+    groups[type].forEach(r => {
+      html += `<div class="cmdk-item${r._idx === _cmdkActiveIdx ? ' active' : ''}" data-idx="${r._idx}">
+        <div class="cmdk-item-icon">${r.icon}</div>
+        <div class="cmdk-item-body">
+          <div class="cmdk-item-title">${r.title}</div>
+          <div class="cmdk-item-sub">${r.sub}</div>
+        </div>
+        <span class="cmdk-item-badge">${groupLabels[r.type]}</span>
+      </div>`;
+    });
+  });
+
+  container.innerHTML = html;
+
+  // Click handlers
+  container.querySelectorAll('.cmdk-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      if (_cmdkResults[idx]) executeCmdkAction(_cmdkResults[idx]);
+    });
+    el.addEventListener('mouseenter', () => {
+      _cmdkActiveIdx = parseInt(el.dataset.idx);
+      container.querySelectorAll('.cmdk-item').forEach(e => e.classList.remove('active'));
+      el.classList.add('active');
+    });
+  });
+
+  // Scroll active item into view
+  const activeEl = container.querySelector('.cmdk-item.active');
+  if (activeEl) activeEl.scrollIntoView({ block:'nearest' });
+}
+
+function executeCmdkAction(result) {
+  closeCmdPalette();
+  if (result.action) result.action();
+}
+
+function navTo(section) {
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  const link = document.querySelector(`.nav-link[data-section="${section}"]`);
+  if (link) link.classList.add('active');
+  showSection(section);
 }
 
 window.showArchiveDetail = showArchiveDetail;
