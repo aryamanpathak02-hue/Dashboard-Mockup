@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Munshi. — Audio Intelligence for Teams</title>
-  <link rel="stylesheet" href="style.css?v=17" />
+  <link rel="stylesheet" href="style.css?v=19" />
 </head>
 <body>
   <div class="cursor-glow" id="cursorGlow"></div>
@@ -17,7 +17,7 @@
       <nav class="nav">
         <a href="#" class="nav-link active" data-section="home">HOME</a>
         <a href="#" class="nav-link" data-section="collections">COLLECTIONS</a>
-        <a href="#" class="nav-link" data-section="whispers">WHISPERS</a>
+        <a href="#" class="nav-link" data-section="whispers">WHISPERS<span class="nav-badge" id="whisperNavBadge"></span></a>
       </nav>
       <div class="header-actions">
         <button class="btn-signin" id="signInBtn">Sign In</button>
@@ -52,6 +52,33 @@
         <p class="progress-text" id="progressText">Processing...</p>
       </div>
       <button class="create-btn" id="createBtn">Create archive &rarr;</button>
+    </div>
+
+    <!-- Processing Dashboard (hidden by default) -->
+    <div class="proc-dashboard" id="processingDashboard" style="display:none;">
+      <div class="proc-top">
+        <div class="proc-ring-wrap">
+          <svg class="proc-ring" viewBox="0 0 80 80"><circle class="proc-ring-bg" cx="40" cy="40" r="34"/><circle class="proc-ring-fill" id="procRingFill" cx="40" cy="40" r="34"/></svg>
+          <span class="proc-ring-pct" id="procRingPct">0%</span>
+        </div>
+        <div class="proc-top-info">
+          <h3 class="proc-title" id="procTitle">Processing files...</h3>
+          <p class="proc-eta" id="procEta">Estimating time remaining...</p>
+        </div>
+      </div>
+      <div class="proc-stats">
+        <div class="proc-stat"><span class="proc-stat-num" id="procQueued">0</span><span class="proc-stat-label">Queued</span></div>
+        <div class="proc-stat"><span class="proc-stat-num proc-stat-active" id="procProcessing">0</span><span class="proc-stat-label">Processing</span></div>
+        <div class="proc-stat"><span class="proc-stat-num proc-stat-done" id="procComplete">0</span><span class="proc-stat-label">Complete</span></div>
+        <div class="proc-stat"><span class="proc-stat-num proc-stat-fail" id="procFailed">0</span><span class="proc-stat-label">Failed</span></div>
+      </div>
+      <div class="proc-stream" id="procStream"></div>
+      <div class="proc-ticker" id="procTicker">
+        <span class="proc-ticker-icon">&#128172;</span>
+        <span class="proc-ticker-label">Issues discovered:</span>
+        <span class="proc-ticker-count" id="procWhisperCount">0</span>
+        <span class="proc-ticker-flash" id="procTickerFlash"></span>
+      </div>
     </div>
 
     <!-- Stats dashboard -->
@@ -118,14 +145,14 @@
     <nav class="breadcrumb-bar" id="whisperBreadcrumb" style="display:none;"><a class="bc-link" id="whisperBcRoot">Whispers</a><span class="bc-sep">/</span><span class="bc-current" id="whisperBcCurrent"></span></nav>
     <canvas id="bubblesCanvas" class="bubbles-canvas"></canvas>
 
-    <!-- ── Landing: 3 immersive panels ── -->
+    <!-- ── Landing: 2 panels (Signals + Issues) ── -->
     <div class="whispers-landing" id="whispersLanding">
       <div class="whispers-header">
         <h2 class="whispers-title">Whispers</h2>
         <p class="whispers-sub">You probably didn't know this:</p>
       </div>
       <div class="whisper-bento" id="whisperBento">
-        <!-- Signal — large left -->
+        <!-- Signal — left -->
         <div class="bento-pane bento-signal" data-cat="signal">
           <div class="bento-glow"></div>
           <div class="bento-accent"></div>
@@ -141,42 +168,26 @@
             <span class="bento-cta">Explore &rarr;</span>
           </div>
         </div>
-        <!-- Alert — top right -->
-        <div class="bento-pane bento-alert" data-cat="alert">
+        <!-- Issues — right -->
+        <div class="bento-pane bento-issues" data-cat="issues">
           <div class="bento-glow"></div>
           <div class="bento-accent"></div>
-          <canvas class="bento-viz" id="vizAlert"></canvas>
+          <canvas class="bento-viz" id="vizIssues"></canvas>
           <div class="bento-inner">
             <div class="bento-top">
               <span class="bento-icon">&#9888;</span>
-              <span class="bento-count" id="bentoCountAlert" data-target="3">0</span>
+              <span class="bento-count" id="bentoCountIssues" data-target="3">0</span>
             </div>
-            <h3 class="bento-label">Alerts</h3>
-            <p class="bento-desc">Risks, negative sentiment, red flags</p>
-            <div class="bento-preview" id="bentoPreviewAlert"></div>
-            <span class="bento-cta">Explore &rarr;</span>
-          </div>
-        </div>
-        <!-- Bridge — full bottom width -->
-        <div class="bento-pane bento-bridge" data-cat="bridge">
-          <div class="bento-glow"></div>
-          <div class="bento-accent"></div>
-          <canvas class="bento-viz" id="vizBridge"></canvas>
-          <div class="bento-inner">
-            <div class="bento-top">
-              <span class="bento-icon">&#8644;</span>
-              <span class="bento-count" id="bentoCountBridge" data-target="3">0</span>
-            </div>
-            <h3 class="bento-label">Bridge</h3>
-            <p class="bento-desc">Connecting the dots — linking signals to alerts</p>
-            <div class="bento-preview" id="bentoPreviewBridge"></div>
-            <span class="bento-cta">Explore &rarr;</span>
+            <h3 class="bento-label">Issues</h3>
+            <p class="bento-desc">Grouped alerts — root cause analysis at a glance</p>
+            <div class="bento-preview" id="bentoPreviewIssues"></div>
+            <span class="bento-cta">Investigate &rarr;</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Detail view (shown after zoom) ── -->
+    <!-- ── Detail view for Signals / Issue list (shown after zoom) ── -->
     <div class="whispers-detail" id="whispersDetail" style="display:none;">
       <button class="whisper-back" id="whisperBack">&larr; Back to Whispers</button>
       <div class="whispers-detail-header" id="whispersDetailHeader">
@@ -184,6 +195,65 @@
         <h2 class="whisper-detail-title" id="whisperDetailTitle"></h2>
       </div>
       <div class="whisper-grid" id="whisperGrid"></div>
+    </div>
+
+    <!-- ── Issue Detail View (full-page within whispers section) ── -->
+    <div class="issue-detail-view" id="issueDetailView" style="display:none;">
+      <button class="whisper-back" id="issueDetailBack">&larr; Back to Issues</button>
+      <div class="issue-detail-header" id="issueDetailHeader">
+        <span class="issue-sev-badge" id="issueDetailSev"></span>
+        <span class="issue-status-badge" id="issueDetailStatus"></span>
+        <h2 class="issue-detail-title" id="issueDetailTitle"></h2>
+      </div>
+      <div class="issue-detail-meta" id="issueDetailMeta"></div>
+
+      <!-- Grouped Alerts -->
+      <div class="issue-section">
+        <h3 class="issue-section-title">Grouped Alerts</h3>
+        <div class="issue-alerts-list" id="issueAlertsList"></div>
+      </div>
+
+      <!-- Understand section -->
+      <div class="issue-section">
+        <h3 class="issue-section-title">Understand</h3>
+        <div class="issue-tools-row" id="issueUnderstandRow">
+          <button class="issue-tool-btn" data-tool="rootcause"><span class="issue-tool-icon">&#128270;</span> Root Cause</button>
+          <button class="issue-tool-btn" data-tool="impact"><span class="issue-tool-icon">&#128200;</span> Impact Radar</button>
+          <button class="issue-tool-btn" data-tool="timeline"><span class="issue-tool-icon">&#128197;</span> Timeline</button>
+        </div>
+        <div class="issue-tool-result" id="issueUnderstandResult" style="display:none;"></div>
+      </div>
+
+      <!-- Resolve section -->
+      <div class="issue-section">
+        <h3 class="issue-section-title">Resolve</h3>
+        <div class="issue-tools-row" id="issueResolveRow">
+          <button class="issue-tool-btn" data-tool="signalfeed"><span class="issue-tool-icon">&#9650;</span> Signal Feed</button>
+          <button class="issue-tool-btn" data-tool="past"><span class="issue-tool-icon">&#128218;</span> Past Resolutions</button>
+          <button class="issue-tool-btn" data-tool="actionplan"><span class="issue-tool-icon">&#128221;</span> Action Plan</button>
+          <button class="issue-tool-btn" data-tool="whatif"><span class="issue-tool-icon">&#128161;</span> What-If</button>
+        </div>
+        <div class="issue-tool-result" id="issueResolveResult" style="display:none;"></div>
+      </div>
+
+      <!-- Mark Resolved -->
+      <div class="issue-section issue-resolve-section">
+        <button class="issue-resolve-btn" id="issueResolveBtn">&#10003; Mark Resolved</button>
+      </div>
+
+      <!-- Resolution Modal (inline) -->
+      <div class="resolution-form" id="resolutionForm" style="display:none;">
+        <h3 class="resolution-form-title">Confirm Resolution</h3>
+        <p class="resolution-form-sub">AI has pre-filled based on your analysis. Edit and confirm.</p>
+        <div class="form-group"><label>Root Cause Confirmed</label><textarea id="resRootCause" rows="3"></textarea></div>
+        <div class="form-group"><label>Solution Applied</label><textarea id="resSolution" rows="3"></textarea></div>
+        <div class="form-group"><label>Preventive Measure</label><textarea id="resPrevention" rows="2"></textarea></div>
+        <div class="form-group"><label>Additional Comments</label><textarea id="resComments" rows="2" placeholder="Your own notes..."></textarea></div>
+        <div class="resolution-form-actions">
+          <button class="wiz-btn-secondary" id="resCancelBtn">Cancel</button>
+          <button class="wiz-btn-primary" id="resConfirmBtn">Confirm Resolution</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -204,6 +274,15 @@
         <div class="whisper-modal-questions" id="whisperModalQuestions">
           <h4>Ask about this insight</h4>
           <div class="whisper-questions-list" id="whisperQuestionsList"></div>
+        </div>
+        <div class="whisper-modal-actions">
+          <h4>Take action</h4>
+          <div class="wm-actions-row">
+            <button class="wm-action-btn" id="wmActionEmail"><span class="wm-action-icon">&#9993;</span> Draft Email</button>
+            <button class="wm-action-btn" id="wmActionBrief"><span class="wm-action-icon">&#128196;</span> Create Brief</button>
+            <button class="wm-action-btn" id="wmActionExport"><span class="wm-action-icon">&#128203;</span> Export</button>
+          </div>
+          <div class="wm-action-result" id="wmActionResult" style="display:none;"></div>
         </div>
       </div>
     </div>
@@ -246,6 +325,113 @@
       </div>
     </div>
   </div>
+
+  <!-- ══════════ UPLOAD WIZARD ══════════ -->
+  <div class="wiz-overlay" id="wizOverlay" style="display:none;">
+    <div class="wiz-dialog">
+      <div class="wiz-header">
+        <h3 class="wiz-title">Connect your audio</h3>
+        <button class="modal-close" id="wizClose">&times;</button>
+      </div>
+      <div class="wiz-steps">
+        <div class="wiz-step active" data-step="1"><span class="wiz-step-num">1</span><span class="wiz-step-label">Source</span></div>
+        <div class="wiz-step-line"></div>
+        <div class="wiz-step" data-step="2"><span class="wiz-step-num">2</span><span class="wiz-step-label">Configure</span></div>
+        <div class="wiz-step-line"></div>
+        <div class="wiz-step" data-step="3"><span class="wiz-step-num">3</span><span class="wiz-step-label">Launch</span></div>
+      </div>
+      <div class="wiz-body">
+        <!-- Step 1: Source -->
+        <div class="wiz-pane" id="wizPane1">
+          <p class="wiz-subtitle">Choose how you want to upload audio</p>
+          <div class="wiz-sources">
+            <div class="wiz-source-card active" data-source="local">
+              <span class="wiz-source-icon">&#128193;</span>
+              <strong>Local Files</strong>
+              <span class="wiz-source-desc">Drag a folder or select files</span>
+            </div>
+            <div class="wiz-source-card" data-source="cloud">
+              <span class="wiz-source-icon">&#9729;</span>
+              <strong>Cloud Storage</strong>
+              <span class="wiz-source-desc">S3, GCS, or Azure Blob URL</span>
+            </div>
+            <div class="wiz-source-card" data-source="api">
+              <span class="wiz-source-icon">&#128268;</span>
+              <strong>API Integration</strong>
+              <span class="wiz-source-desc">Use our REST API endpoint</span>
+            </div>
+          </div>
+          <div class="wiz-source-detail" id="wizSourceDetail">
+            <div id="wizLocalDetail" class="wiz-detail-pane">
+              <div class="wiz-drop-zone" id="wizDropZone">
+                <span class="wiz-drop-icon">&#128193;</span>
+                <p>Drop a folder here, or <strong>click to browse</strong></p>
+                <input type="file" id="wizFileInput" multiple accept="audio/*" hidden />
+              </div>
+              <p class="wiz-file-count" id="wizFileCount"></p>
+            </div>
+            <div id="wizCloudDetail" class="wiz-detail-pane" style="display:none;">
+              <div class="form-group"><label>Bucket URL</label><input type="text" id="wizCloudUrl" placeholder="s3://your-bucket/audio-folder/" /></div>
+            </div>
+            <div id="wizApiDetail" class="wiz-detail-pane" style="display:none;">
+              <div class="wiz-api-info">
+                <div class="form-group"><label>API Key</label><div class="wiz-copy-row"><code class="wiz-api-key">msk_live_a8f3...k29d</code><button class="wiz-copy-btn" id="wizCopyKey">Copy</button></div></div>
+                <div class="form-group"><label>Endpoint</label><div class="wiz-copy-row"><code class="wiz-api-key">POST https://api.munshi.ai/v1/ingest</code><button class="wiz-copy-btn" id="wizCopyEndpoint">Copy</button></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Step 2: Configure -->
+        <div class="wiz-pane" id="wizPane2" style="display:none;">
+          <p class="wiz-subtitle">Set up your collection</p>
+          <div class="form-group"><label>Collection name</label><input type="text" id="wizCollName" placeholder="e.g., Q2 Sales Calls" /></div>
+          <div class="form-group-check"><label class="checkbox-label"><input type="checkbox" id="wizAutoCat" checked /> Auto-categorize content</label></div>
+          <div class="form-group-check"><label class="checkbox-label"><input type="checkbox" id="wizGenWhispers" checked /> Generate Whispers after processing</label></div>
+        </div>
+        <!-- Step 3: Confirm -->
+        <div class="wiz-pane" id="wizPane3" style="display:none;">
+          <p class="wiz-subtitle">Review and launch</p>
+          <div class="wiz-confirm-card" id="wizConfirmCard">
+            <div class="wiz-confirm-row"><span class="wiz-confirm-label">Files</span><span class="wiz-confirm-val" id="wizConfirmFiles">--</span></div>
+            <div class="wiz-confirm-row"><span class="wiz-confirm-label">Estimated duration</span><span class="wiz-confirm-val" id="wizConfirmDuration">--</span></div>
+            <div class="wiz-confirm-row"><span class="wiz-confirm-label">Collection</span><span class="wiz-confirm-val" id="wizConfirmColl">--</span></div>
+            <div class="wiz-confirm-row"><span class="wiz-confirm-label">Auto-categorize</span><span class="wiz-confirm-val" id="wizConfirmCat">--</span></div>
+            <div class="wiz-confirm-row"><span class="wiz-confirm-label">Whisper generation</span><span class="wiz-confirm-val" id="wizConfirmWhispers">--</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="wiz-footer">
+        <button class="wiz-btn-secondary" id="wizPrev" style="display:none;">&larr; Back</button>
+        <button class="wiz-btn-primary" id="wizNext">Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TOAST CONTAINER ══════════ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ══════════ ASK MUNSHI PANEL ══════════ -->
+  <button class="ask-fab" id="askFab" title="Ask Munshi (Ctrl+J)"><span class="ask-fab-icon">&#10024;</span></button>
+  <div class="ask-panel" id="askPanel">
+    <div class="ask-header">
+      <h3 class="ask-title">Ask Munshi</h3>
+      <div class="ask-header-actions"><a class="ask-clear" id="askClear">Clear</a><button class="modal-close ask-close" id="askClose">&times;</button></div>
+    </div>
+    <div class="ask-messages" id="askMessages">
+      <div class="ask-suggestions" id="askSuggestions">
+        <p class="ask-suggest-label">Try asking:</p>
+        <button class="ask-suggest-btn">What did customers say about pricing this month?</button>
+        <button class="ask-suggest-btn">Summarize all competitive mentions across sales calls</button>
+        <button class="ask-suggest-btn">What are the top objections from prospects?</button>
+        <button class="ask-suggest-btn">Give me a weekly briefing from last week's meetings</button>
+      </div>
+    </div>
+    <div class="ask-input-area">
+      <input type="text" class="ask-input" id="askInput" placeholder="Ask anything about your audio..." autocomplete="off" />
+      <button class="ask-send" id="askSend">&#10148;</button>
+    </div>
+  </div>
+  <div class="ask-backdrop" id="askBackdrop"></div>
 
   <!-- ══════════ COMMAND PALETTE ══════════ -->
   <div class="cmdk-overlay" id="cmdkOverlay" style="display:none;">
